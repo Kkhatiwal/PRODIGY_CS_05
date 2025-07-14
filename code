@@ -1,0 +1,50 @@
+from tkinter import *
+from tkinter import scrolledtext, messagebox
+from scapy.all import sniff, IP, TCP, UDP, ICMP
+import threading
+from datetime import datetime
+
+sniffing = False
+
+def packet_callback(packet):
+    if IP in packet:
+        time = datetime.now().strftime("%H:%M:%S")
+        src = packet[IP].src
+        dst = packet[IP].dst
+        proto = "OTHER"
+
+        if TCP in packet:
+            proto = "TCP"
+        elif UDP in packet:
+            proto = "UDP"
+        elif ICMP in packet:
+            proto = "ICMP"
+
+        data = bytes(packet.payload)[:40]
+        text = f"[{time}] {src} → {dst} | {proto}\nPayload: {data}\n{'-'*60}\n"
+        output_box.insert(END, text)
+        output_box.see(END)
+
+def start_sniff():
+    global sniffing
+    sniffing = True
+    messagebox.showinfo("Notice", "Use only on your own network for ethical purposes.")
+    threading.Thread(target=lambda: sniff(prn=packet_callback, store=False, stop_filter=lambda x: not sniffing), daemon=True).start()
+
+def stop_sniff():
+    global sniffing
+    sniffing = False
+    output_box.insert(END, "\n[Stopped Sniffing]\n")
+
+# GUI Setup
+win = Tk()
+win.title("Simple Packet Sniffer (Educational Use Only)")
+win.geometry("700x400")
+
+Button(win, text="Start Sniffing", bg="green", fg="white", command=start_sniff).pack(pady=5)
+Button(win, text="Stop Sniffing", bg="red", fg="white", command=stop_sniff).pack(pady=5)
+
+output_box = scrolledtext.ScrolledText(win, width=85, height=20, font=("Courier", 9))
+output_box.pack(padx=10, pady=10)
+
+win.mainloop()
